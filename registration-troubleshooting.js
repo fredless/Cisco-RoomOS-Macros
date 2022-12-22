@@ -41,6 +41,15 @@ function regChange(status) {
         ])
           .then(([displayName, deviceModel, macAddress]) => {
             switch (status) {
+            case 'Failed':
+              //endpoint registration *initial* failure
+              xapi.Command.UserInterface.Message.Alert.Display({
+                Text: date,
+                Title: "Endpoint registration lost, reestablishing..",
+                Duration: alertTime
+              });
+              sendWxMsg(`${displayName} (${deviceModel}-${macAddress}) initial registration failure, waiting for timeout or reregistration..`);
+              break;
             case 'Inactive':
               // endpoint registration (and re-registration) has fully failed at this point
               let date = new Date().toString().split('.').shift();
