@@ -18,57 +18,61 @@
 const xapi = require('xapi');
 
 const webexMsgUrl = 'https://webexapis.com/v1/messages';
+const headers = ['Content-Type: application/json', 'Authorization: Bearer ' + token];
+
 // diagnostic Webex space
 const roomId = 'base64 roomId here';
 // automation bot token
 const token = 'bot auth token here';
-const headers = ['Content-Type: application/json', 'Authorization: Bearer ' + token];
 // number of seconds for OSD alert to display
 const alertTime = 180
 
-function sendWxMsg(markdown) {
-  let body = Object.assign({markdown}, {roomId});
-  xapi.Command.HttpClient.Post({Header: headers, Url: webexMsgUrl}, JSON.stringify(body));
-}
-
-function regChange(status) {
-    console.log(status);
-    (async() => {
+function setAlert(message, mdTreatment) {
+  // set or clear OSD
+  if (message == 'registered') {
+    xapi.Command.UserInterface.Message.Alert.Clear();
+    }
+  else {
+    let date = new Date().toString().split('.').shift();
+    xapi.Command.UserInterface.Message.Alert.Display({
+      Text: date,
+      Title: message,
+      Duration: alertTime
+    });
+  }
+  // Log space msg
+      (async() => {
         Promise.all([
               xapi.Config.SIP.DisplayName.get(),
               xapi.Status.SystemUnit.ProductId.get(),
               xapi.Status.Network[1].Ethernet.MacAddress.get()
         ])
           .then(([displayName, deviceModel, macAddress]) => {
-            switch (status) {
-            case 'Failed':
-              //endpoint registration *initial* failure
-              xapi.Command.UserInterface.Message.Alert.Display({
-                Text: date,
-                Title: "Endpoint registration lost, reestablishing..",
-                Duration: alertTime
-              });
-              sendWxMsg(`${displayName} (${deviceModel}-${macAddress}) initial registration failure, waiting for timeout or reregistration..`);
-              break;
-            case 'Inactive':
-              // endpoint registration (and re-registration) has fully failed at this point
-              let date = new Date().toString().split('.').shift();
-              // display OSD alert
-              xapi.Command.UserInterface.Message.Alert.Display({
-                Text: date,
-                Title: "Endpoint registration failure",
-                Duration: alertTime
-              });
-              sendWxMsg(`**${displayName} (${deviceModel}-${macAddress}) registration failure, sending logs**`);
-              xapi.Command.Logging.SendLogs();
-              break;
-            case 'Registered':
-              // Endpoint successfully registered, clear OSD alert if present
-              xapi.Command.UserInterface.Message.Alert.Clear();
-              sendWxMsg(`${displayName} (${deviceModel}-${macAddress}) registered`);
-            }
-          })  
-    })()
+            var markdown = `${mdTreatment}${displayName} (${deviceModel}-${macAddress}) ${message}${mdTreatment}`;
+            xapi.Command.HttpClient.Post({Header: headers, Url: webexMsgUrl}, JSON.stringify(Object.assign({markdown}, {roomId})));
+          })
+      })()
+}
+
+function regChange(status) {
+    console.log(status);
+    var message = '', mdTreatment ='';
+    switch (status) {
+    case 'Failed':
+      //endpoint registration *initial* failure
+      message = 'registration lost, reestablishing..';
+      break;
+    case 'Inactive':
+      // endpoint registration (and re-registration) has fully failed at this point
+      message = 'registration failure!';
+      mdTreatment = '**'
+      break;
+    case 'Registered':
+      message = 'registered';
+    }
+    if (message !== '') {
+      setAlert(message, mdTreatment);
+    }
 }
 
 // startup - clear old alerts and ensure http client is available
