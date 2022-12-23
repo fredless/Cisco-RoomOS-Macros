@@ -18,7 +18,6 @@
 const xapi = require('xapi');
 
 const webexMsgUrl = 'https://webexapis.com/v1/messages';
-const headers = ['Content-Type: application/json', 'Authorization: Bearer ' + token];
 
 // diagnostic Webex space
 const roomId = 'base64 roomId here';
@@ -26,6 +25,9 @@ const roomId = 'base64 roomId here';
 const token = 'bot auth token here';
 // number of seconds for OSD alert to display
 const alertTime = 180
+
+const headers = ['Content-Type: application/json', 'Authorization: Bearer ' + token];
+
 
 function setAlert(message, mdTreatment) {
   // set or clear OSD
