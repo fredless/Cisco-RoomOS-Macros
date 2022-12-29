@@ -28,58 +28,61 @@ const alertTime = 180
 
 const headers = ['Content-Type: application/json', 'Authorization: Bearer ' + token];
 
-
-function setAlert(message, mdTreatment) {
-  // set or clear OSD
-  if (message == 'registered') {
+function clearAlert() {
     xapi.Command.UserInterface.Message.Alert.Clear();
-    }
-  else {
-    let date = new Date().toString().split('.').shift();
-    xapi.Command.UserInterface.Message.Alert.Display({
-      Text: date,
-      Title: message,
-      Duration: alertTime
-    });
-  }
-  // Log space msg
-      (async() => {
+}
+
+function setAlert(status, date) {
+    xapi.Command.UserInterface.Message.Alert.Display({Text: date, Title: status, Duration: alertTime});
+}
+
+function logWxMsg(status, date) {
+    // Log space msg
+    if (status == "Inactive") {
+      //In case of fully failed registration, put emphasis on log message and send logs for troubleshooting
+      var mdTreatment='#'
+      xapi.Command.Logging.SendLogs();
+      }
+    else {var mdTreatment = '  '}
+
+    (async() => {
         Promise.all([
-              xapi.Config.SIP.DisplayName.get(),
-              xapi.Status.SystemUnit.ProductId.get(),
-              xapi.Status.Network[1].Ethernet.MacAddress.get(),
-              xapi.Status.SIP.Proxy[1].Address.get()
+            xapi.Config.SIP.DisplayName.get(),
+            xapi.Status.SystemUnit.ProductId.get(),
+            xapi.Status.Network[1].Ethernet.MacAddress.get(),
+            xapi.Status.SIP.Proxy[1].Address.get()
         ])
-          .then(([displayName, deviceModel, macAddress, proxy]) => {
-            var markdown = `${mdTreatment}${date} ${displayName} (${deviceModel}-${macAddress}-${proxy}) ${message}${mdTreatment}`;
+        .then(([displayName, deviceModel, macAddress, proxy]) => {
+            var markdown = `\`${mdTreatment} ${date} ${displayName.padEnd(25)} ${deviceModel.padEnd(23)} ${macAddress.padEnd(20)} ${proxy.padEnd(21)} ${status.padEnd(10)} ${mdTreatment}\``;
             xapi.Command.HttpClient.Post({Header: headers, Url: webexMsgUrl}, JSON.stringify(Object.assign({markdown}, {roomId})));
-          })
+        })
       })()
 }
 
 function regChange(status) {
     console.log(status);
-    var message = '', mdTreatment ='';
+    var date = new Date().toString().split('.').shift();
     switch (status) {
-    case 'Inactive':
-      // endpoint registration (and re-registration) has fully failed at this point
-      message = 'registration failure!';
-      mdTreatment = '**'
-      break;
-    case 'Registered':
-      message = 'registered';
-    }
-    if (message !== '') {
-      setAlert(message, mdTreatment);
+        case 'Registered':
+            clearAlert();
+            logWxMsg(status, date);
+            break;
+        case 'Deregister':
+        case 'Failed':
+        case 'Inactive':
+            // endpoint registration (and re-registration) has fully failed at this point
+            setAlert(status, date);
+            logWxMsg(status, date);
+            break;
     }
 }
 
-// startup - clear old alerts and ensure http client is available
+// startup - clear any old alerts and ensure http client is available
 xapi.Command.UserInterface.Message.Alert.Clear();
 xapi.Config.HttpClient.Mode.set('On');
 
 console.log('waiting 120 seconds for registration to settle at boot..')
 setTimeout(function () {
-  console.log('..now listening to registration changes')
+  console.log('..now listening to registration changes');
   xapi.Status.SIP.Registration.Status.on(regChange);
-}, 120000);  
+}, 120000);
