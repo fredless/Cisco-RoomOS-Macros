@@ -61,10 +61,6 @@ function regChange(status) {
     console.log(status);
     var message = '', mdTreatment ='';
     switch (status) {
-    case 'Failed':
-      //endpoint registration *initial* failure
-      message = 'registration lost, reestablishing..';
-      break;
     case 'Inactive':
       // endpoint registration (and re-registration) has fully failed at this point
       message = 'registration failure!';
