@@ -51,7 +51,7 @@ function setAlert(message, mdTreatment) {
               xapi.Status.SIP.Proxy[1].Address.get()
         ])
           .then(([displayName, deviceModel, macAddress, proxy]) => {
-            var markdown = `${mdTreatment}${displayName} (${deviceModel}-${macAddress}-${proxy}) ${message}${mdTreatment}`;
+            var markdown = `${mdTreatment}${date} ${displayName} (${deviceModel}-${macAddress}-${proxy}) ${message}${mdTreatment}`;
             xapi.Command.HttpClient.Post({Header: headers, Url: webexMsgUrl}, JSON.stringify(Object.assign({markdown}, {roomId})));
           })
       })()
