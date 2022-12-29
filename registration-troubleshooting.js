@@ -47,10 +47,11 @@ function setAlert(message, mdTreatment) {
         Promise.all([
               xapi.Config.SIP.DisplayName.get(),
               xapi.Status.SystemUnit.ProductId.get(),
-              xapi.Status.Network[1].Ethernet.MacAddress.get()
+              xapi.Status.Network[1].Ethernet.MacAddress.get(),
+              xapi.Status.SIP.Proxy[1].Address.get()
         ])
-          .then(([displayName, deviceModel, macAddress]) => {
-            var markdown = `${mdTreatment}${displayName} (${deviceModel}-${macAddress}) ${message}${mdTreatment}`;
+          .then(([displayName, deviceModel, macAddress, proxy]) => {
+            var markdown = `${mdTreatment}${displayName} (${deviceModel}-${macAddress}-${proxy}) ${message}${mdTreatment}`;
             xapi.Command.HttpClient.Post({Header: headers, Url: webexMsgUrl}, JSON.stringify(Object.assign({markdown}, {roomId})));
           })
       })()
@@ -85,4 +86,4 @@ console.log('waiting 120 seconds for registration to settle at boot..')
 setTimeout(function () {
   console.log('..now listening to registration changes')
   xapi.Status.SIP.Registration.Status.on(regChange);
-}, 120000); 
+}, 120000);  
